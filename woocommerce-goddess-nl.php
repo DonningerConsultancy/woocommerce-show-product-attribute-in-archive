@@ -57,6 +57,7 @@ class WoocommerceGoddessNL {
 	function init_plugin() {
 		global $product;
 		if ( is_admin() ) {
+		
 			//this will run when in the WordPress admin
 			/**
 			* save all bandnames in the titles
@@ -67,6 +68,10 @@ class WoocommerceGoddessNL {
 			 *  Save custom attributes as post's meta data as well so that we can use in sorting and searching
 			 */
 			add_action( 'save_post', array($this,'save_woocommerce_attr_to_meta'), 20 );
+			/**
+			* save the category as product attribute so filtering is done better
+			*/
+			add_action( 'save_post', array($this,'save_category_as_attr'), 20 );
 			/**
 			* add the bandname to the product title upon saving a product
 			*/
@@ -106,6 +111,7 @@ class WoocommerceGoddessNL {
 						
 		}
 	}
+ 
 	
 	/**
 	* go through all the products and change the title.
@@ -370,8 +376,48 @@ AND LCASE(p.post_title) NOT LIKE LCASE(CONCAT('%', m.meta_value, '%'))";
 			echo $post->post_title;
 		}
 		echo "</span></a>";
+	} 
+	
+	/**
+	* Save the category name as attribute so filtering is done in a better way
+	*/
+	function save_category_as_attr($_product_id = 0) {
+		global $product;
+		$product_id = $_product_id ? $_product_id : $product->ID;
+		$terms = get_the_terms( $product_id, 'product_cat' );
+		$term = array_shift(array_values($terms));
+		$category = $term->name;
+		
+		/** find the matching attribute */
+		$attribute_taxonomies = wc_get_attribute_taxonomies();
+		$taxonomy_terms = array();
+		
+		if ( $attribute_taxonomies ) :
+		    foreach ($attribute_taxonomies as $tax) :
+		    if (taxonomy_exists(wc_attribute_taxonomy_name($tax->attribute_name))) {
+		    	echo "'" . wc_attribute_taxonomy_name($tax->attribute_name) . "'<br/>";
+		    	if($tax->attribute_name === "cat-attr") {
+			        $taxonomy_terms[$tax->attribute_name] = get_terms( wc_attribute_taxonomy_name($tax->attribute_name), 'orderby=name&hide_empty=0' );
+			    }
+		    }
+		endforeach;
+		endif;
+		
+		var_dump($taxonomy_terms);
+		
+		exit;
+
+		
+		$att_terms = get_the_terms( $product_id, 'pa_band');
+		
+		$terms = get_post_meta( $product_id, '_product_attributes', true );
+		$band_terms = $terms["pa_band"];
+		$category_terms = array("name" => "pa_cat_attr", "value" => "", "postition" => "1", "is_visible" => 1, "is_variation" => 0, "is_taxonomy" => 1);
+		
+		$new_terms = array("pa_band" => $band_terms, "pa_cat_attr" => $category_terms);
+		var_dump($new_terms); exit(0);
+		//update_post_meta( $product_id, 'pa_cat_attr', $category);
 	}
-  
 } // end class
 new WoocommerceGoddessNL();
 
